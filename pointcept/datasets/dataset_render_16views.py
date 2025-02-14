@@ -145,17 +145,27 @@ class SAMPart3DDataset16Views(Dataset):
             self.logger.info(f"Processing frame_{i}")
             rgb_path = join(self.data_root, f"render_{i:04d}.webp")
             img = np.array(Image.open(rgb_path))
+            mask_img = np.zeros(img.shape[:2], dtype=bool)  # Initialize mask_img with False
             if img.shape[-1] == 4:
                 mask_img = img[..., 3] == 0
                 img[mask_img] = [255, 255, 255, 255]
                 img = img[..., :3]
                 img = Image.fromarray(img.astype('uint8'))
+            else:
+                img = Image.fromarray(img.astype('uint8'))
 
             # Calculate mapping
             depth_path = join(self.data_root, f"depth_{i:04d}.exr")
             depth = cv2.imread(depth_path, cv2.IMREAD_UNCHANGED)
-            depth = depth[..., 0]
+            if len(depth.shape) == 3:
+                depth = depth[..., 0]  # Take first channel if multi-channel
+            # Ensure depth is valid and in correct range
+            depth = np.clip(depth, 0, np.inf)  # Ensure no negative values
             depth_valid = torch.tensor(depth < 65500.0)
+            
+            # Log depth statistics for debugging
+            self.logger.info(f"Frame {i} - Depth stats: min={depth.min():.3f}, max={depth.max():.3f}, mean={depth.mean():.3f}")
+            
             org_points = gen_pcd(depth, c2w_opengl, camera_angle_x)
             org_points = torch.from_numpy(org_points)
             points_tensor = org_points.to(self.device).contiguous().float()
@@ -171,10 +181,12 @@ class SAMPart3DDataset16Views(Dataset):
 
             # Calculate groups 
             try:
-                masks = SAM_model(img, points_per_side=32, pred_iou_thresh=0.9, stability_score_thresh=0.9)
+                masks = SAM_model(img, points_per_side=32, pred_iou_thresh=0.86, stability_score_thresh=0.86)
                 masks = masks['masks']
                 masks = sorted(masks, key=lambda x: x.sum())
-            except:
+                self.logger.info(f"Found {len(masks)} masks before filtering")
+            except Exception as e:
+                self.logger.warning(f"SAM failed to generate masks: {str(e)}")
                 masks = []
 
             # mask filter
@@ -182,12 +194,18 @@ class SAMPart3DDataset16Views(Dataset):
             img_valid = ~mask_img
             for mask in masks:
                 valid_ratio = mask[img_valid].sum() / img_valid.sum()
-                invalid_ratio = mask[mask_img].sum() / mask_img.sum()
-                if valid_ratio == 0 or invalid_ratio > 0.1:
-                    continue
-                else:
+                invalid_ratio = mask[mask_img].sum() / (mask_img.sum() + 1e-6)  # Avoid division by zero
+                if valid_ratio > 0.01 and invalid_ratio < 0.2:  # Relaxed criteria
                     masks_filtered.append(mask)
-            pixel_level_keys, scale, mask_cdf = self._calculate_3d_groups(torch.from_numpy(depth), mapping_valid, masks_filtered, points_tensor[mask_dis])    
+            
+            self.logger.info(f"Kept {len(masks_filtered)} masks after filtering")
+            
+            pixel_level_keys, scale, mask_cdf = self._calculate_3d_groups(
+                torch.from_numpy(depth), 
+                mapping_valid, 
+                masks_filtered, 
+                points_tensor[mask_dis]
+            )
 
             pixel_level_keys_list.append(pixel_level_keys)
             scale_list.append(scale)

@@ -45,7 +45,7 @@ class SAMPart3D(nn.Module):
                 "activation": "ReLU",
                 "output_activation": "None",
                 "n_neurons": 384,
-                "n_hidden_layers": 6,
+                "n_hidden_layers": 3,
             },
         )
 

@@ -9,7 +9,10 @@ from PIL import Image, ImageDraw
 from scipy import ndimage as ndi
 import pointops
 import sys
-sys.path.append(os.path.abspath(".."))
+
+# Add project root to Python path
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(project_root)
 
 from pointcept.datasets.sampart3d_util import *
 
@@ -118,8 +121,8 @@ def highlight_parts_in_multi_views(render_dir, mesh_path, results_dir, save_dir,
 
 
 if __name__ == '__main__':
-    render_dir = ""
-    mesh_path = ""
-    results_dir = ""
-    save_dir = ""
+    render_dir = "data_root/knight"  # where your rendered images are
+    mesh_path = "mesh_root/knight.glb"  # your original mesh
+    results_dir = "exp/sampart3d/knight/results/last"  # where the segmentation results are
+    save_dir = "exp/sampart3d/knight/highlights" 
     highlight_parts_in_multi_views(render_dir, mesh_path, results_dir, save_dir)

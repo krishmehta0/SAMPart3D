@@ -15,3 +15,14 @@ outputs/
 **/*.out
 Dockerfile
 debug_pcd
+
+# Blender
+blender-4.0.0-linux-x64/*
+
+ckpt/*
+data/*
+mesh_root/*
+data_root/*
+exp/*
+
+
