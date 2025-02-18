@@ -49,8 +49,8 @@ model = dict(
 )
 
 # scheduler settings
-epoch = 5000  # can be smaller
-eval_epoch = 5000  # can be smaller
+epoch = 1000  # can be smaller
+eval_epoch = 1000  # can be smaller
 optimizer = dict(type="AdamW", lr=1e-4, weight_decay=1e-8)
 scheduler = dict(
     type="OneCycleLR",

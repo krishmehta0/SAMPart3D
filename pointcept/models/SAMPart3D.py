@@ -23,7 +23,7 @@ class SAMPart3D(nn.Module):
                  backbone_dim=None, 
                  output_dim=None,
                  pcd_feat_dim=None,
-                 use_hierarchy_losses=True, 
+                 use_hierarchy_losses=False, 
                  max_grouping_scale=2, 
                  freeze_backbone=True,
                  **kwargs):
